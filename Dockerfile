@@ -70,16 +70,18 @@ RUN groupadd -g 1000 runner \
 
 # Configure Agda library defaults and record prim path for consistency with CI.
 ENV AGDA_STDLIB=/usr/share/agda-stdlib
-
+ENV AGDA_DIR=/usr/share/agda
 ENV AGDA_EXEC_OPTIONS=--include-path=/usr/share/agda/lib/prim
 
 # Configure Agda for both root and runner users
+# Ensure runner user owns Agda directories to avoid cabal store permission issues
 RUN for home in /root /home/runner; do \
       mkdir -p "$home/.agda"; \
       echo "$AGDA_STDLIB/standard-library.agda-lib" > "$home/.agda/libraries"; \
       echo "standard-library" > "$home/.agda/defaults"; \
     done \
-    && chown -R runner:runner /home/runner
+    && mkdir -p /usr/share/agda \
+    && chown -R runner:runner /home/runner /usr/share/agda
 
 # Switch to runner user by default
 USER runner
