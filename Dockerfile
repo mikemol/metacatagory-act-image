@@ -2,6 +2,7 @@
 # Inherits from the standard act runner image (ubuntu 22.04).
 
 FROM catthehacker/ubuntu:act-22.04 AS agda-builder
+ARG AGDA_VERSION=2.8.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -27,10 +28,21 @@ RUN mkdir -p /opt/agda/bin
 
 RUN --mount=type=cache,target=/root/.cabal \
     --mount=type=cache,target=/root/.cache \
-    set -e; \
-    cabal update; \
-    cabal install alex happy; \
-    cabal install Agda-2.8.0 --installdir=/opt/agda/bin --install-method=copy
+    cabal update
+
+RUN --mount=type=cache,target=/root/.cabal \
+    --mount=type=cache,target=/root/.cache \
+    cabal install alex happy
+
+RUN --mount=type=cache,target=/root/.cabal \
+    --mount=type=cache,target=/root/.cache \
+    cabal install Agda-${AGDA_VERSION} --installdir=/opt/agda/bin --install-method=copy
+
+RUN curl -L https://hackage.haskell.org/package/Agda-${AGDA_VERSION}/Agda-${AGDA_VERSION}.tar.gz -o /tmp/Agda-${AGDA_VERSION}.tar.gz \
+ && mkdir -p /opt/agda/lib \
+ && tar -xzf /tmp/Agda-${AGDA_VERSION}.tar.gz -C /tmp \
+ && cp -r /tmp/Agda-${AGDA_VERSION}/lib/prim /opt/agda/lib/prim \
+ && rm -rf /tmp/Agda-${AGDA_VERSION} /tmp/Agda-${AGDA_VERSION}.tar.gz
 
 FROM catthehacker/ubuntu:act-22.04
 
@@ -51,6 +63,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=agda-builder /opt/agda/bin /usr/local/bin
+COPY --from=agda-builder /opt/agda/lib/prim /usr/share/agda/lib/prim
 
 # Create runner user matching typical host UID/GID (1000:1000)
 # This prevents root-owned files in mounted workspace
@@ -60,19 +73,7 @@ RUN groupadd -g 1000 runner \
 # Configure Agda library defaults and record prim path for consistency with CI.
 ENV AGDA_STDLIB=/usr/share/agda-stdlib
 
-# Resolve prim location from the installed Agda and ensure /usr/share/agda/lib/prim exists.
-RUN set -e; \
-    mkdir -p /usr/share/agda/lib; \
-    AGDA_DIR="$(agda --print-agda-dir)"; \
-    PRIM=""; \
-    for cand in "$AGDA_DIR/lib/prim" "$AGDA_DIR/prim" /usr/share/agda/lib/prim; do \
-      if [ -d "$cand" ]; then PRIM="$cand"; break; fi; \
-    done; \
-    if [ -z "$PRIM" ]; then echo "Agda prim not found" >&2; exit 1; fi; \
-    if [ "$PRIM" != "/usr/share/agda/lib/prim" ]; then ln -s "$PRIM" /usr/share/agda/lib/prim; fi; \
-    ls /usr/share/agda/lib/prim >/dev/null; \
-    echo "AGDA_DIR=$AGDA_DIR" >> /etc/environment; \
-    echo "AGDA_EXEC_OPTIONS=--include-path=/usr/share/agda/lib/prim" >> /etc/environment
+ENV AGDA_EXEC_OPTIONS=--include-path=/usr/share/agda/lib/prim
 
 # Configure Agda for both root and runner users
 RUN for home in /root /home/runner; do \
