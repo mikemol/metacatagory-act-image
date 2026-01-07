@@ -38,11 +38,10 @@ RUN --mount=type=cache,target=/root/.cabal \
     --mount=type=cache,target=/root/.cache \
     cabal install Agda-${AGDA_VERSION} --installdir=/opt/agda/bin --install-method=copy
 
-RUN curl -L https://hackage.haskell.org/package/Agda-${AGDA_VERSION}/Agda-${AGDA_VERSION}.tar.gz -o /tmp/Agda-${AGDA_VERSION}.tar.gz \
+RUN set -e \
+ && AGDA_DIR="$(agda --print-agda-dir)" \
  && mkdir -p /opt/agda/lib \
- && tar -xzf /tmp/Agda-${AGDA_VERSION}.tar.gz -C /tmp \
- && cp -r /tmp/Agda-${AGDA_VERSION}/lib/prim /opt/agda/lib/prim \
- && rm -rf /tmp/Agda-${AGDA_VERSION} /tmp/Agda-${AGDA_VERSION}.tar.gz
+ && cp -r "$AGDA_DIR/lib/prim" /opt/agda/lib/prim
 
 FROM catthehacker/ubuntu:act-22.04
 
