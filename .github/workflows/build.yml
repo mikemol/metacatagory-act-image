@@ -8,6 +8,10 @@ on:
       - Dockerfile
       - .github/workflows/build.yml
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
