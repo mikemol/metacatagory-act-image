@@ -23,6 +23,8 @@ RUN apt-get update \
 
 # Build and install Agda 2.8.0 (avoids Ubuntu's older 2.6.x packages).
 # Uses BuildKit cache mounts so repeated builds only download/compile deltas.
+RUN mkdir -p /opt/agda/bin
+
 RUN --mount=type=cache,target=/root/.cabal \
     --mount=type=cache,target=/root/.cache \
     set -e; \
