@@ -39,6 +39,7 @@ RUN --mount=type=cache,target=/root/.cabal \
     cabal install Agda-${AGDA_VERSION} --installdir=/opt/agda/bin --install-method=copy
 
 RUN set -e \
+ && export PATH=/opt/agda/bin:$PATH \
  && AGDA_DIR="$(agda --print-agda-dir)" \
  && mkdir -p /opt/agda/lib \
  && cp -r "$AGDA_DIR/lib/prim" /opt/agda/lib/prim
