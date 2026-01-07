@@ -13,13 +13,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
       - name: Login to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Build and push
-        run: |
-          docker buildx create --use --driver docker-container
-          docker buildx build \
-            -t ghcr.io/mikemol/act-ubuntu-agda:latest \
-            --cache-from type=registry,ref=ghcr.io/mikemol/act-ubuntu-agda:buildcache \
-            --cache-to type=registry,ref=ghcr.io/mikemol/act-ubuntu-agda:buildcache,mode=max \
-            --push .
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      # STEP 1: Build and cache the expensive agda-builder stage
+      # This ensures Agda build cache is saved even if final stage fails
+      - name: Build Agda Builder Stage
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: agda-builder
+          cache-from: type=gha,scope=agda-builder
+          cache-to: type=gha,mode=max,scope=agda-builder
+          push: false
+      
+      # STEP 2: Build and push the final image
+      # Uses cached agda-builder layers from Step 1
+      - name: Build and Push Final Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          cache-from: |
+            type=gha,scope=agda-builder
+            type=gha,scope=final-image
+          cache-to: type=gha,mode=max,scope=final-image
+          push: true
+          tags: ghcr.io/mikemol/act-ubuntu-agda:latest
