@@ -24,19 +24,23 @@ RUN apt-get update \
 
 # Build and install Agda 2.8.0 (avoids Ubuntu's older 2.6.x packages).
 # Uses BuildKit cache mounts so repeated builds only download/compile deltas.
-RUN mkdir -p /opt/agda/bin
+# Set HOME=/home/runner so cabal store is created as runner-owned, not root-owned
+RUN mkdir -p /opt/agda/bin /home/runner
 
-RUN --mount=type=cache,target=/root/.cabal \
-    --mount=type=cache,target=/root/.cache \
+RUN --mount=type=cache,target=/home/runner/.cabal \
+    --mount=type=cache,target=/home/runner/.cache \
+    export HOME=/home/runner; \
     cabal update
 
-RUN --mount=type=cache,target=/root/.cabal \
-    --mount=type=cache,target=/root/.cache \
+RUN --mount=type=cache,target=/home/runner/.cabal \
+    --mount=type=cache,target=/home/runner/.cache \
+    export HOME=/home/runner; \
     cabal install alex happy
 
-RUN --mount=type=cache,target=/root/.cabal \
-    --mount=type=cache,target=/root/.cache \
+RUN --mount=type=cache,target=/home/runner/.cabal \
+    --mount=type=cache,target=/home/runner/.cache \
     set -e; \
+    export HOME=/home/runner; \
     cabal install Agda-${AGDA_VERSION} --installdir=/opt/agda/bin --install-method=copy; \
     AGDA_DIR="$(PATH=/opt/agda/bin:$PATH agda --print-agda-dir)"; \
     mkdir -p /opt/agda/lib; \
