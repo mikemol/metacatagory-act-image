@@ -45,10 +45,9 @@ RUN --mount=type=cache,target=/home/runner/.cabal \
       --install-method=copy \
       --overwrite-policy=always \
       --installdir=/opt/agda/bin; \
-    PATH=/opt/agda/bin:$PATH agda-mode compile; \
     AGDA_DATA="$(PATH=/opt/agda/bin:$PATH agda --print-agda-data-dir)"; \
     mkdir -p /opt/agda/share; \
-    cp -r "$AGDA_DATA"/* /opt/agda/share/
+    if [ -d "$AGDA_DATA" ]; then cp -r "$AGDA_DATA"/* /opt/agda/share/; fi
 
 FROM catthehacker/ubuntu:act-22.04
 
