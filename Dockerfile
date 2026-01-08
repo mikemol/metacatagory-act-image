@@ -46,8 +46,14 @@ RUN --mount=type=cache,target=/home/runner/.cabal \
       --overwrite-policy=always \
       --installdir=/opt/agda/bin; \
     AGDA_DATA="$(PATH=/opt/agda/bin:$PATH agda --print-agda-data-dir)"; \
+    echo "Agda data dir: $AGDA_DATA"; \
     mkdir -p /opt/agda/share; \
-    if [ -d "$AGDA_DATA" ]; then cp -r "$AGDA_DATA"/* /opt/agda/share/; fi
+    if [ -d "$AGDA_DATA" ]; then \
+      ls -la "$AGDA_DATA" || true; \
+      cp -rv "$AGDA_DATA"/* /opt/agda/share/ || true; \
+    else \
+      echo "Warning: Agda data dir not found at $AGDA_DATA"; \
+    fi
 
 FROM catthehacker/ubuntu:act-22.04
 
