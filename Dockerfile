@@ -41,10 +41,14 @@ RUN --mount=type=cache,target=/home/runner/.cabal \
     --mount=type=cache,target=/home/runner/.cache \
     set -e; \
     export HOME=/home/runner; \
-    cabal install Agda-${AGDA_VERSION} --installdir=/opt/agda/bin --install-method=copy; \
-    AGDA_DIR="$(PATH=/opt/agda/bin:$PATH agda --print-agda-dir)"; \
-    mkdir -p /opt/agda/lib; \
-    cp -r "$AGDA_DIR/lib/prim" /opt/agda/lib/prim
+    cabal install Agda-${AGDA_VERSION} \
+      --install-method=copy \
+      --overwrite-policy=always \
+      --installdir=/opt/agda/bin; \
+    PATH=/opt/agda/bin:$PATH agda-mode compile; \
+    AGDA_DATA="$(PATH=/opt/agda/bin:$PATH agda --print-agda-data-dir)"; \
+    mkdir -p /opt/agda/share; \
+    cp -r "$AGDA_DATA"/* /opt/agda/share/
 
 FROM catthehacker/ubuntu:act-22.04
 
@@ -65,26 +69,24 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=agda-builder /opt/agda/bin /usr/local/bin
-COPY --from=agda-builder /opt/agda/lib/prim /usr/share/agda/lib/prim
+COPY --from=agda-builder /opt/agda/share /usr/share/agda
 
 # Create runner user matching typical host UID/GID (1000:1000)
 # This prevents root-owned files in mounted workspace
 RUN groupadd -g 1000 runner \
     && useradd -m -u 1000 -g 1000 -s /bin/bash runner
 
-# Configure Agda library defaults and record prim path for consistency with CI.
+# Configure Agda library defaults and system paths (FHS-compliant)
 ENV AGDA_STDLIB=/usr/share/agda-stdlib
-ENV AGDA_DIR=/usr/share/agda
-ENV AGDA_EXEC_OPTIONS=--include-path=/usr/share/agda/lib/prim
+ENV AGDA_DATA_DIR=/usr/share/agda
 
 # Configure Agda for both root and runner users
-# Ensure runner user owns Agda directories to avoid cabal store permission issues
+# Ensure runner user owns Agda data directory
 RUN for home in /root /home/runner; do \
       mkdir -p "$home/.agda"; \
       echo "$AGDA_STDLIB/standard-library.agda-lib" > "$home/.agda/libraries"; \
       echo "standard-library" > "$home/.agda/defaults"; \
     done \
-    && mkdir -p /usr/share/agda \
     && chown -R runner:runner /home/runner /usr/share/agda
 
 # Switch to runner user by default
