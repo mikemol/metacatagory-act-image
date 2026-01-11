@@ -35,6 +35,8 @@ jobs:
         with:
           context: .
           target: agda-builder
+          build-args: |
+            CABAL_JOBS=1
           cache-from: type=gha,scope=agda-builder
           cache-to: type=gha,mode=max,scope=agda-builder
           push: false
@@ -45,6 +47,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          build-args: |
+            CABAL_JOBS=1
           cache-from: |
             type=gha,scope=agda-builder
             type=gha,scope=final-image

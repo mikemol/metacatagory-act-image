@@ -3,6 +3,7 @@
 
 FROM catthehacker/ubuntu:act-22.04 AS agda-builder
 ARG AGDA_VERSION=2.8.0
+ARG CABAL_JOBS=4
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +20,6 @@ RUN apt-get update \
         curl \
         git \
         pandoc \
-        agda-stdlib \
     && rm -rf /var/lib/apt/lists/*
 
 # Build and install Agda 2.8.0 (avoids Ubuntu's older 2.6.x packages).
@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/home/runner/.cabal \
 RUN --mount=type=cache,target=/home/runner/.cabal \
     --mount=type=cache,target=/home/runner/.cache \
     export HOME=/home/runner; \
-    cabal install alex happy
+    cabal install alex happy --jobs=${CABAL_JOBS}
 
 RUN --mount=type=cache,target=/home/runner/.cabal \
     --mount=type=cache,target=/home/runner/.cache \
@@ -45,7 +45,8 @@ RUN --mount=type=cache,target=/home/runner/.cabal \
     cabal install Agda-${AGDA_VERSION} \
       --install-method=copy \
       --overwrite-policy=always \
-      --installdir=/opt/agda/bin; \
+      --installdir=/opt/agda/bin \
+      --jobs=${CABAL_JOBS}; \
     AGDA_DATA="$(PATH=/opt/agda/bin:$PATH agda --print-agda-data-dir)"; \
     mkdir -p /opt/agda/share; \
     if [ -d "$AGDA_DATA" ]; then \
@@ -67,7 +68,6 @@ RUN apt-get update \
         ca-certificates \
         git \
         pandoc \
-        agda-stdlib \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=agda-builder /opt/agda/bin /usr/local/bin
@@ -78,18 +78,12 @@ COPY --from=agda-builder /opt/agda/share /usr/share/agda
 RUN groupadd -g 1000 runner \
     && useradd -m -u 1000 -g 1000 -s /bin/bash runner
 
-# Configure Agda library defaults and system paths (FHS-compliant)
-ENV AGDA_STDLIB=/usr/share/agda-stdlib
+# Configure Agda data dir (FHS-compliant)
 ENV AGDA_DATA_DIR=/usr/share/agda
+ENV AGDA_DIR=/usr/share/agda
 
-# Configure Agda for both root and runner users
-# Ensure runner user owns Agda data directory
-RUN for home in /root /home/runner; do \
-      mkdir -p "$home/.agda"; \
-      echo "$AGDA_STDLIB/standard-library.agda-lib" > "$home/.agda/libraries"; \
-      echo "standard-library" > "$home/.agda/defaults"; \
-    done \
-    && chown -R runner:runner /home/runner /usr/share/agda
+# Ensure runner owns its home and Agda data dir
+RUN chown -R runner:runner /home/runner /usr/share/agda
 
 # Switch to runner user by default
 USER runner
