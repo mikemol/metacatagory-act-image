@@ -56,6 +56,8 @@ RUN --mount=type=cache,target=/home/runner/.cabal \
 FROM catthehacker/ubuntu:act-22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ARG RUNNER_UID=1001
+ARG RUNNER_GID=1001
 
 # Runtime deps for act workflows + Agda tooling.
 RUN apt-get update \
@@ -73,10 +75,10 @@ RUN apt-get update \
 COPY --from=agda-builder /opt/agda/bin /usr/local/bin
 COPY --from=agda-builder /opt/agda/share /usr/share/agda
 
-# Create runner user matching typical host UID/GID (1000:1000)
-# This prevents root-owned files in mounted workspace
-RUN groupadd -g 1000 runner \
-    && useradd -m -u 1000 -g 1000 -s /bin/bash runner
+# Create runner user matching GitHub container UID/GID (1001:1001 by default)
+# Allows workflows running as 1001 to write under /home/runner
+RUN groupadd -g "${RUNNER_GID}" runner \
+    && useradd -m -u "${RUNNER_UID}" -g "${RUNNER_GID}" -s /bin/bash runner
 
 # Configure Agda data dir (FHS-compliant)
 ENV AGDA_DATA_DIR=/usr/share/agda
